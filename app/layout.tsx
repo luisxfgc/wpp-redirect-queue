@@ -1,34 +1,33 @@
-import { ClerkProvider } from '@clerk/nextjs'
-import { Figtree } from 'next/font/google'
 import './globals.css'
-import { ThemeProvider } from './providers'
-
-const figtree = Figtree({ subsets: ['latin'] })
+import { ClerkProvider } from '@clerk/nextjs'
+import { ThemeProvider } from '@/components/theme-provider'
+import { Toaster } from '@/components/ui/toaster'
 
 export const metadata = {
-  title: 'WPP Redirect Queue',
-  description: 'Manage your WhatsApp redirects efficiently',
+	title: 'WPP Redirect Queue',
+	description: 'Gerenciamento de fila de redirecionamento do WhatsApp',
 }
 
 export default function RootLayout({
-  children,
+	children,
 }: {
-  children: React.ReactNode
+	children: React.ReactNode
 }) {
-  return (
-    <ClerkProvider>
-      <html lang="pt-BR" suppressHydrationWarning>
-        <body className={figtree.className}>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange
-          >
-            {children}
-          </ThemeProvider>
-        </body>
-      </html>
-    </ClerkProvider>
-  )
+	return (
+		<ClerkProvider>
+			<html
+				lang='pt-BR'
+				suppressHydrationWarning>
+				<body className='font-sans antialiased'>
+					<ThemeProvider
+						attribute='class'
+						defaultTheme='system'
+						enableSystem>
+						{children}
+						<Toaster />
+					</ThemeProvider>
+				</body>
+			</html>
+		</ClerkProvider>
+	)
 }
