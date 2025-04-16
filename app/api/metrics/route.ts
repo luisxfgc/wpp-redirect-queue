@@ -8,7 +8,7 @@ interface Phone {
 	number: string
 	name: string
 	online: boolean
-	agentId: string
+	userId: string
 	createdAt: string
 	lastOnline?: string
 	lastOffline?: string
@@ -19,7 +19,7 @@ interface QueueItem {
 	id: string
 	position: number
 	active: boolean
-	agentId: string
+	userId: string
 	phoneId: string
 	createdAt: Date
 	waitTime?: number
@@ -33,45 +33,41 @@ export async function GET() {
 		}
 
 		// Buscar todos os telefones do usuário
-		const phonesRef = collection(db, 'phoneNumbers')
-		const phonesQuery = query(phonesRef, where('agentId', '==', userId))
+		const phonesRef = collection(db, 'phones')
+		const phonesQuery = query(phonesRef, where('userId', '==', userId))
 		const phonesSnapshot = await getDocs(phonesQuery)
 
 		const phones = phonesSnapshot.docs.map((doc) => ({
 			id: doc.id,
-			...(doc.data() as Phone),
-		}))
+			...doc.data(),
+		})) as Phone[]
 
-		// Buscar itens da fila para cada telefone online
-		const queue: QueueItem[] = []
-		for (const phone of phones) {
-			if (phone.online) {
-				const queueRef = collection(db, 'phoneNumbers', phone.id, 'queue')
-				const queueQuery = query(queueRef, where('active', '==', true))
-				const queueSnapshot = await getDocs(queueQuery)
-
-				queue.push(
-					...queueSnapshot.docs.map((doc) => ({
-						id: doc.id,
-						...(doc.data() as QueueItem),
-					}))
-				)
-			}
-		}
+		// Buscar itens da fila ativos do usuário
+		const queueRef = collection(db, 'queue')
+		const queueQuery = query(
+			queueRef,
+			where('userId', '==', userId),
+			where('active', '==', true)
+		)
+		const queueSnapshot = await getDocs(queueQuery)
+		const queueItems = queueSnapshot.docs.map((doc) => ({
+			id: doc.id,
+			...doc.data(),
+		})) as QueueItem[]
 
 		// Calcular métricas
 		const totalPhones = phones.length
-		const totalNumbers = queue.length
+		const totalNumbers = queueItems.length
 		const averageWaitTime =
-			queue.length > 0
-				? queue.reduce((sum, item) => sum + (item.waitTime || 0), 0) /
-				  queue.length
+			queueItems.length > 0
+				? queueItems.reduce((sum, item) => sum + (item.waitTime || 0), 0) /
+				  queueItems.length
 				: 0
 
 		return NextResponse.json({
 			totalPhones,
 			totalNumbers,
-			averageWaitTime,
+			averageWaitTime: `${Math.round(averageWaitTime)}min`,
 		})
 	} catch (error) {
 		console.error('Error fetching metrics:', error)

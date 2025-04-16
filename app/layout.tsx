@@ -14,7 +14,10 @@ export default function RootLayout({
 	children: React.ReactNode
 }) {
 	return (
-		<ClerkProvider>
+		<ClerkProvider
+			appearance={{
+				baseTheme: undefined,
+			}}>
 			<html
 				lang='pt-BR'
 				suppressHydrationWarning>

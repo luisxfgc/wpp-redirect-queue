@@ -1,30 +1,21 @@
-import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { db } from '@/lib/firebase'
-import { collection, getDocs, query, where } from 'firebase/firestore'
+import { collection, query, where, getDocs, orderBy } from 'firebase/firestore'
+import { NextResponse } from 'next/server'
 
 interface Phone {
 	id: string
 	number: string
 	name: string
 	online: boolean
-	agentId: string
-	createdAt: string
-	lastOnline?: string
-	lastOffline?: string
-	lastOnlineChange?: string
+	userId: string
+	lastOnlineChange: string
 }
 
-interface QueueItem {
-	id: string
-	position: number
-	active: boolean
-	agentId: string
-	phoneId: string
-	createdAt: Date
-	waitTime?: number
-	number?: string
-	name?: string
+interface DashboardMetrics {
+	totalPhones: number
+	onlinePhones: number
+	lastConnection: string
 }
 
 export async function GET() {
@@ -34,59 +25,37 @@ export async function GET() {
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 		}
 
-		// Buscar todos os telefones do usuário
-		const phonesRef = collection(db, 'phoneNumbers')
-		const phonesQuery = query(phonesRef, where('agentId', '==', userId))
+		// Get all phones for the user
+		const phonesRef = collection(db, 'phones')
+		const phonesQuery = query(phonesRef, where('userId', '==', userId))
 		const phonesSnapshot = await getDocs(phonesQuery)
-
 		const phones = phonesSnapshot.docs.map((doc) => ({
 			id: doc.id,
-			...(doc.data() as Phone),
-		}))
+			...doc.data(),
+		})) as Phone[]
 
-		// Buscar itens da fila para cada telefone online
-		const queue: QueueItem[] = []
-		for (const phone of phones) {
-			if (phone.online) {
-				const queueRef = collection(db, 'phoneNumbers', phone.id, 'queue')
-				const queueQuery = query(queueRef, where('active', '==', true))
-				const queueSnapshot = await getDocs(queueQuery)
+		// Calculate metrics
+		const onlinePhones = phones.filter((phone) => phone.online).length
+		const lastConnection =
+			phones
+				.filter((phone) => phone.lastOnlineChange)
+				.sort(
+					(a, b) =>
+						new Date(b.lastOnlineChange).getTime() -
+						new Date(a.lastOnlineChange).getTime()
+				)[0]?.lastOnlineChange || ''
 
-				queue.push(
-					...queueSnapshot.docs.map((doc) => ({
-						id: doc.id,
-						...(doc.data() as QueueItem),
-						number: phone.number,
-						name: phone.name,
-					}))
-				)
-			}
+		const metrics: DashboardMetrics = {
+			totalPhones: phones.length,
+			onlinePhones,
+			lastConnection,
 		}
 
-		// Ordenar a fila por posição
-		queue.sort((a, b) => a.position - b.position)
-
-		// Calcular métricas
-		const totalPhones = phones.length
-		const totalNumbers = queue.length
-		const averageWaitTime =
-			queue.length > 0
-				? queue.reduce((sum, item) => sum + (item.waitTime || 0), 0) /
-				  queue.length
-				: 0
-
-		return NextResponse.json({
-			metrics: {
-				totalPhones,
-				totalNumbers,
-				averageWaitTime: `${Math.round(averageWaitTime)}min`,
-			},
-			queue,
-		})
+		return NextResponse.json(metrics)
 	} catch (error) {
-		console.error('Error fetching dashboard data:', error)
+		console.error('Error fetching dashboard metrics:', error)
 		return NextResponse.json(
-			{ error: 'Error fetching dashboard data' },
+			{ error: 'Failed to fetch dashboard metrics' },
 			{ status: 500 }
 		)
 	}

@@ -1,10 +1,11 @@
-import { Settings, Phone, Sun, Moon } from 'lucide-react'
+import { Settings, ListPlus, Sun, Moon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuTrigger,
+	DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import { useTheme } from 'next-themes'
 import Link from 'next/link'
@@ -28,10 +29,11 @@ export function SettingsMenu() {
 					<Link
 						href='/phones'
 						className='flex items-center'>
-						<Phone className='mr-2 h-4 w-4' />
+						<ListPlus className='mr-2 h-4 w-4' />
 						Gerenciar Números
 					</Link>
 				</DropdownMenuItem>
+				<DropdownMenuSeparator />
 				<DropdownMenuItem
 					onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
 					className='flex items-center'>
